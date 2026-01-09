@@ -28,23 +28,23 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 延长到15秒
 
     try {
-      // 这里的 API_BASE 仅在非同域场景下需要，如果是方案 B，直接使用相对路径即可
-      // 为了兼容用户要求的 VITE_API_BASE，这里做逻辑处理
-      const VITE_API_BASE = (import.meta as any).env?.VITE_API_BASE || "";
-      const endpoint = VITE_API_BASE ? `${VITE_API_BASE}/api/decision` : "/api/decision";
-
-      const response = await fetch(endpoint, {
+      // 关键修正：不再依赖环境变量，直接请求当前域名的 /api 路径
+      // 这样 Vercel 的 vercel.json rewrite 规则会自动接管请求并转发到后端
+      const response = await fetch('/api/decision', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         signal: controller.signal,
         body: JSON.stringify({
           text: problemText,
           context: {
             state: userState,
-            category,
+            category: category,
             language: "zh",
             mode: "text"
           }
@@ -53,7 +53,10 @@ const App: React.FC = () => {
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`请求失败 (${response.status}): ${errorData}`);
+      }
 
       const data: DecisionResponse = await response.json();
 
@@ -61,25 +64,26 @@ const App: React.FC = () => {
         setResults(data.cards);
         setStep(AppStep.RESULT);
       } else {
-        throw new Error("Invalid format");
+        throw new Error("返回数据格式不正确");
       }
 
-    } catch (err) {
+    } catch (err: any) {
       clearTimeout(timeoutId);
-      console.error("Fetch Error:", err);
-      // Fallback 策略：友好的离线/错误卡片
+      console.error("网络连接异常:", err);
+      
+      // 降级策略
       setResults([
         {
-          title: '听起来你现在压力很大',
-          content: `我明白你在纠结：“${problemText}”。`
+          title: '哎呀，网络开小差了',
+          content: '我现在没法连接到服务器。不过根据你刚才说的情况，我建议你：'
         },
         {
-          title: '第一个建议：先停下 5 分钟',
-          content: '由于网络暂时无法连接，我建议你先放下手机，喝口温水，深呼吸三次。'
+          title: '先做这一件事',
+          content: '喝口热水，深呼吸，把手机放下 5 分钟。有些混乱会在平静后自动散开。'
         },
         {
-          title: '第二个建议：确定截止时间',
-          content: '请确认这件事是否必须在接下来的 1 小时内决定？如果不是，请先休息一下再试。'
+          title: '稍后再试',
+          content: '这可能是暂时的信号不好。当你觉得心情平复一些了，再回来找我。'
         }
       ]);
       setStep(AppStep.RESULT);

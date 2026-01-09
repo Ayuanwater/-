@@ -3,7 +3,6 @@ const CACHE_NAME = 'shuxin-zhushou-v1';
 const urlsToCache = [
   '/',
   '/index.html',
-  'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap'
 ];
 
