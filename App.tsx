@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppStep, UserState, ProblemCategory, DecisionCard, DecisionResponse } from './types';
 import BigButton from './components/BigButton';
@@ -31,61 +30,56 @@ const App: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      // 访问 /api/decision，由 vercel.json 转发至后端
+      // 访问代理后的 /api/decision
       const response = await fetch('/api/decision', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           text: problemText,
-          context: {
-            state: userState || '未知状态',
-            category: category || '未分类',
-            language: "zh",
-            mode: "text"
-          }
+          // 极简 Payload，防止后端 500
+          user_state: userState || '未知',
+          category: category || '未分类'
         }),
       });
 
       if (!response.ok) {
-        let errorInfo = `HTTP ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorInfo = errorData?.error?.message || errorInfo;
-        } catch (e) {
-          // 如果不是 JSON，尝试读取文本
-        }
-        throw new Error(errorInfo);
+        const errorText = await response.text();
+        console.error("服务器响应异常:", response.status, errorText);
+        throw new Error(`连接不稳定 (${response.status})`);
       }
 
-      const data: DecisionResponse = await response.json();
+      const data = await response.json();
+      
+      // 容错处理：兼容多种后端返回格式
+      const cards = data.cards || data.data?.cards || (Array.isArray(data) ? data : null);
 
-      if (data?.cards && Array.isArray(data.cards)) {
-        setResults(data.cards);
+      if (cards && Array.isArray(cards)) {
+        setResults(cards);
         setStep(AppStep.RESULT);
       } else {
-        throw new Error("返回数据格式不兼容");
+        throw new Error("格式不兼容");
       }
 
     } catch (err: any) {
-      console.error("请求失败:", err);
-      // 设置错误消息，但依然进入 RESULT 页面展示降级卡片
-      setErrorMessage(err.message || "连接服务器失败");
+      console.error("前端捕获到异常:", err);
+      setErrorMessage(err.message || "请求失败");
       
+      // 离线/报错兜底逻辑
       setResults([
         {
-          title: '服务器正在排队',
-          content: '目前咨询的人较多，建议您先尝试：'
+          title: '既然云端在忙，咱们先手动捋一下',
+          content: '别担心，咱们先把乱糟糟的线头理顺：',
+          items: [
+            '先深呼吸 3 次，感受空气进出身体',
+            '拿起手边的杯子喝口水，慢慢喝',
+            '在心里（或纸上）写下现在最让你担心的三个字'
+          ]
         },
         {
-          title: '深呼吸并喝口水',
-          content: '生理上的放松是解决心理压力的第一步。'
-        },
-        {
-          title: '写下目前的选项',
-          content: '哪怕只是在脑子里列个清单，也会让思绪更清晰。'
+          title: '小提醒',
+          content: '无论事情多大，只要把它拆成一分钟能做完的小事，它就没那么可怕了。'
         }
       ]);
       setStep(AppStep.RESULT);
@@ -168,10 +162,10 @@ const App: React.FC = () => {
 
       case AppStep.RESULT:
         return (
-          <div className="space-y-8 animate-in">
+          <div className="space-y-8 animate-in w-full">
             {errorMessage && (
-              <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl text-amber-800 text-center font-medium">
-                提示：云端连接不稳定 ({errorMessage})。为您展示基础建议。
+              <div className="bg-amber-50 border-2 border-amber-200 p-6 rounded-2xl text-amber-900 text-center font-bold text-xl leading-snug shadow-sm">
+                ⚠️ 云端连接有点忙，为您展示舒心离线建议
               </div>
             )}
             <h2 className="text-3xl font-bold text-center text-slate-800">为您捋出的几条思路</h2>
@@ -194,36 +188,36 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center px-6 py-10">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-lg lg:max-w-lg">
         {step > 0 && step < 4 && (
           <button 
             onClick={() => setStep(step - 1)}
-            className="mb-6 text-blue-600 font-bold text-xl flex items-center gap-2"
+            className="mb-6 text-blue-600 font-bold text-2xl flex items-center gap-2 active:bg-blue-50 p-2 rounded-xl"
           >
-            ← 返回上一步
+            ← 返回
           </button>
         )}
         
         {renderStep()}
 
-        <div className="mt-16 text-center">
+        <div className="mt-20 text-center">
           <button 
             onClick={() => setShowHelp(true)}
-            className="text-slate-400 underline text-lg"
+            className="text-slate-400 underline text-xl py-4 px-6"
           >
-            紧急帮助
+            紧急求助
           </button>
         </div>
       </div>
 
       {showHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6 z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-50 backdrop-blur-md" role="dialog" aria-modal="true">
           <div className="bg-white p-8 rounded-[40px] shadow-2xl max-w-sm w-full space-y-6">
             <h3 className="text-3xl font-bold text-red-600">温馨提示</h3>
-            <p className="text-xl text-slate-700 leading-relaxed">
+            <p className="text-xl text-slate-700 leading-relaxed font-medium">
               如果您现在感到非常不安全，请立即联系当地的紧急求助电话（如 110、120）或身边最亲近的人。
               <br/><br/>
-              记住：您并不孤单，总会有人愿意听您说话。
+              记住：无论何时，您都不孤单。
             </p>
             <BigButton onClick={() => setShowHelp(false)}>我知道了</BigButton>
           </div>
