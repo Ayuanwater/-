@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<DecisionCard[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const resetAll = () => {
     setStep(AppStep.WELCOME);
@@ -19,6 +20,7 @@ const App: React.FC = () => {
     setCategory('');
     setProblemText('');
     setResults([]);
+    setErrorMessage(null);
   };
 
   const handleDecision = async () => {
@@ -26,36 +28,31 @@ const App: React.FC = () => {
 
     setStep(AppStep.LOADING);
     setIsLoading(true);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 延长到15秒
+    setErrorMessage(null);
 
     try {
-      // 关键修正：不再依赖环境变量，直接请求当前域名的 /api 路径
-      // 这样 Vercel 的 vercel.json rewrite 规则会自动接管请求并转发到后端
+      // 还原原有逻辑：通过 Vercel Rewrite 访问后端
       const response = await fetch('/api/decision', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        signal: controller.signal,
         body: JSON.stringify({
           text: problemText,
           context: {
-            state: userState,
-            category: category,
+            state: userState || '未知状态',
+            category: category || '未分类',
             language: "zh",
             mode: "text"
           }
         }),
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`请求失败 (${response.status}): ${errorData}`);
+        const errorText = await response.text();
+        console.error("服务器返回错误:", response.status, errorText);
+        throw new Error(`服务器异常 (${response.status})`);
       }
 
       const data: DecisionResponse = await response.json();
@@ -64,26 +61,26 @@ const App: React.FC = () => {
         setResults(data.cards);
         setStep(AppStep.RESULT);
       } else {
-        throw new Error("返回数据格式不正确");
+        throw new Error("返回数据格式不兼容");
       }
 
     } catch (err: any) {
-      clearTimeout(timeoutId);
-      console.error("网络连接异常:", err);
+      console.error("请求失败详情:", err);
+      setErrorMessage(err.message || "连接不到服务器");
       
-      // 降级策略
+      // 保持原有的离线降级逻辑，确保应用不卡死
       setResults([
         {
-          title: '哎呀，网络开小差了',
-          content: '我现在没法连接到服务器。不过根据你刚才说的情况，我建议你：'
+          title: '服务器暂时有点忙',
+          content: '我们暂时没能从云端获取到详细建议，但您可以先尝试以下通用步骤：'
         },
         {
-          title: '先做这一件事',
-          content: '喝口热水，深呼吸，把手机放下 5 分钟。有些混乱会在平静后自动散开。'
+          title: '深呼吸 3 次',
+          content: '这能帮您快速平复焦虑，看清眼前的第一步。'
         },
         {
-          title: '稍后再试',
-          content: '这可能是暂时的信号不好。当你觉得心情平复一些了，再回来找我。'
+          title: '写下最担心的 3 件事',
+          content: '把混乱的思绪变成文字，往往就没那么可怕了。'
         }
       ]);
       setStep(AppStep.RESULT);
@@ -158,8 +155,8 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-8 animate-pulse">
             <div className="w-20 h-20 border-8 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <div className="space-y-4">
-              <h2 className="text-3xl font-bold text-slate-800">我在整理...</h2>
-              <p className="text-2xl text-slate-500 px-6">正在帮你把事情理顺，先把最急的和不急的分开</p>
+              <h2 className="text-3xl font-bold text-slate-800">正在整理思绪...</h2>
+              <p className="text-2xl text-slate-500 px-6">把乱糟糟的事情分开，其实没那么可怕</p>
             </div>
           </div>
         );
@@ -167,6 +164,11 @@ const App: React.FC = () => {
       case AppStep.RESULT:
         return (
           <div className="space-y-8 animate-in">
+            {errorMessage && (
+              <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl text-amber-800 text-center font-medium">
+                提示：{errorMessage}。已为您展示临时建议。
+              </div>
+            )}
             <h2 className="text-3xl font-bold text-center text-slate-800">为您捋出的几条思路</h2>
             <div className="space-y-4">
               {results.map((card, i) => (
