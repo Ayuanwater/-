@@ -3,6 +3,21 @@ import { AppStep, UserState, ProblemCategory, DecisionCard, DecisionResponse } f
 import BigButton from './components/BigButton';
 import DecisionCardView from './components/DecisionCardView';
 
+// 健壮的环境变量读取逻辑
+const getApiBase = () => {
+  try {
+    // 检查 import.meta.env 是否存在，避免浏览器报错
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) {
+      return import.meta.env.VITE_API_BASE;
+    }
+  } catch (e) {
+    console.warn("无法读取环境变量 VITE_API_BASE，使用默认值");
+  }
+  return "https://shu-xin-api-clean-laln.vercel.app";
+};
+
+const API_BASE = getApiBase();
+
 const App: React.FC = () => {
   const [step, setStep] = useState<AppStep>(AppStep.WELCOME);
   const [userState, setUserState] = useState<UserState>('');
@@ -30,8 +45,11 @@ const App: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      // 访问代理后的后端接口路径
-      const response = await fetch('/api/decision', {
+      // 按照要求：前端直接请求已部署的后端 API 域名
+      const requestUrl = `${API_BASE}/api/decision`;
+      console.log(`📡 发起请求: ${requestUrl}`);
+
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -48,7 +66,7 @@ const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`连接失败 (${response.status})`);
+        throw new Error(`请求异常: ${response.status}`);
       }
 
       const data: DecisionResponse = await response.json();
@@ -57,27 +75,23 @@ const App: React.FC = () => {
         setResults(data.cards);
         setStep(AppStep.RESULT);
       } else {
-        throw new Error("数据格式不正确");
+        throw new Error("返回数据格式不正确");
       }
 
     } catch (err: any) {
-      console.error("请求失败:", err);
-      setErrorMessage(err.message || "请求失败");
+      console.error("❌ 决策请求失败:", err);
+      setErrorMessage(err.message || "连接失败");
       
-      // 报错时的降级策略：展示预设建议卡片
+      // 降级策略
       setResults([
         {
-          title: '服务器正在排队，咱们先这样做',
-          content: '目前咨询的人较多，您可以先尝试以下简单的步骤：',
+          title: '暂时无法连接云端',
+          content: '抱歉，目前的网络状况不太理想，建议您先尝试以下操作：',
           items: [
-            '先喝一口温水，感受水进入身体的温润',
-            '慢慢深呼吸三次，不要着急，让心情稳一稳',
-            '如果您真的很慌，请告诉身边信任的人您的顾虑'
+            '深呼吸三次，把注意力放到呼吸上',
+            '喝一点水，稍微休息一下',
+            '等网络好一点了，再来找我聊聊'
           ]
-        },
-        {
-          title: '一个小提醒',
-          content: '不管是什么困难，先想好今天能做的第一步，事情就已经好了一半。'
         }
       ]);
       setStep(AppStep.RESULT);
@@ -93,7 +107,7 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center text-center space-y-12 animate-in pt-10 px-4">
             <div className="space-y-6">
               <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-5xl">🧘</span>
+                <span className="text-5xl" role="img" aria-label="meditation">🧘</span>
               </div>
               <h1 className="text-5xl font-black text-slate-800 tracking-tight">舒心助手</h1>
               <p className="text-2xl text-slate-500 font-medium">不替你做决定，只陪你把事情理顺</p>
@@ -166,7 +180,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in px-4 w-full">
             {errorMessage && (
               <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl text-amber-900 text-center font-bold">
-                提示：云端连接不稳定，为您展示舒心离线建议
+                提示：{errorMessage}。已为您展示舒心基础建议
               </div>
             )}
             <h2 className="text-3xl font-bold text-center text-slate-800 mb-8">为您捋出的几条思路</h2>
@@ -189,7 +203,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center pb-20">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-2xl">
         {step > 0 && step < 4 && (
           <nav className="p-6">
             <button 
