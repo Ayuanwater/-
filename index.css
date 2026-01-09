@@ -1,0 +1,23 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-size: 18px; /* 提高基础字号，适合阅读 */
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 针对老年人/弱视群体的焦点增强 */
+:focus-visible {
+  @apply outline-4 outline-blue-500 outline-offset-2;
+}
+
+/* 输入框提示词颜色加深 */
+::placeholder {
+  @apply text-slate-400;
+}

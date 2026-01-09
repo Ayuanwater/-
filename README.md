@@ -1,11 +1,24 @@
-<div align="center">
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# 舒心助手 - 离线 PWA 极简决策辅助工具
 
-  <h1>Built with AI Studio</h2>
+这是一个面向老年人与弱势群体的无障碍前端应用。
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 启动说明
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+1. 确保安装了 Node.js。
+2. 在项目根目录运行以下命令安装依赖：
+   ```bash
+   npm install
+   ```
+3. 运行开发服务器：
+   ```bash
+   npm run dev
+   ```
+4. 如果要测试 PWA（添加到主屏幕），建议在支持 HTTPS 的环境或 `localhost` 下访问，并确保浏览器已启用 PWA 支持。
 
-</div>
+## 技术亮点
+
+- **极简 UX**: 屏蔽所有复杂设置，只有 3 步核心流程。
+- **无障碍设计**: 默认字号 20px+，按钮可点击区域巨大，配色对比度满足 AAA 标准。
+- **兜底逻辑**: 当后端 API 不可用时，自动展示温和的心理疏导与基础行动建议卡片。
+- **PWA 支持**: 支持离线打开，提供类原生 App 的体验。

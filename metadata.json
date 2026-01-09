@@ -1,0 +1,7 @@
+{
+  "name": "舒心助手 - 陪你捋清大小事",
+  "description": "专为低认知负担设计的决策辅助工具，帮助您在压力下理清思路，做最简单的决定。",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

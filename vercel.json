@@ -1,0 +1,9 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://shu-xin-api-clean-laln.vercel.app/api/:path*"
+    }
+  ]
+}
