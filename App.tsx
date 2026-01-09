@@ -31,7 +31,7 @@ const App: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      // 还原原有逻辑：通过 Vercel Rewrite 访问后端
+      // 访问 /api/decision，由 vercel.json 转发至后端
       const response = await fetch('/api/decision', {
         method: 'POST',
         headers: { 
@@ -50,9 +50,14 @@ const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("服务器返回错误:", response.status, errorText);
-        throw new Error(`服务器异常 (${response.status})`);
+        let errorInfo = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorInfo = errorData?.error?.message || errorInfo;
+        } catch (e) {
+          // 如果不是 JSON，尝试读取文本
+        }
+        throw new Error(errorInfo);
       }
 
       const data: DecisionResponse = await response.json();
@@ -65,22 +70,22 @@ const App: React.FC = () => {
       }
 
     } catch (err: any) {
-      console.error("请求失败详情:", err);
-      setErrorMessage(err.message || "连接不到服务器");
+      console.error("请求失败:", err);
+      // 设置错误消息，但依然进入 RESULT 页面展示降级卡片
+      setErrorMessage(err.message || "连接服务器失败");
       
-      // 保持原有的离线降级逻辑，确保应用不卡死
       setResults([
         {
-          title: '服务器暂时有点忙',
-          content: '我们暂时没能从云端获取到详细建议，但您可以先尝试以下通用步骤：'
+          title: '服务器正在排队',
+          content: '目前咨询的人较多，建议您先尝试：'
         },
         {
-          title: '深呼吸 3 次',
-          content: '这能帮您快速平复焦虑，看清眼前的第一步。'
+          title: '深呼吸并喝口水',
+          content: '生理上的放松是解决心理压力的第一步。'
         },
         {
-          title: '写下最担心的 3 件事',
-          content: '把混乱的思绪变成文字，往往就没那么可怕了。'
+          title: '写下目前的选项',
+          content: '哪怕只是在脑子里列个清单，也会让思绪更清晰。'
         }
       ]);
       setStep(AppStep.RESULT);
@@ -166,7 +171,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in">
             {errorMessage && (
               <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl text-amber-800 text-center font-medium">
-                提示：{errorMessage}。已为您展示临时建议。
+                提示：云端连接不稳定 ({errorMessage})。为您展示基础建议。
               </div>
             )}
             <h2 className="text-3xl font-bold text-center text-slate-800">为您捋出的几条思路</h2>
